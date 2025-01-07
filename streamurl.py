@@ -42,12 +42,13 @@ def getDomain_n(url):
 def main():
     st.title("URL Legitimacy Tracker")
 
+    st.write("Columns in the CSV file:", df_10m.columns)
     sender_email = st.text_input("Sender email:")
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
 
-    import os
-    st.write("Files in directory:", os.listdir())
+    # import os
+    # st.write("Files in directory:", os.listdir())
 
     user_input = st.text_area("Enter the URL:")
     if st.button("Enter") and user_input:
