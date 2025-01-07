@@ -41,8 +41,6 @@ def getDomain_n(url):
 
 def main():
     st.title("URL Legitimacy Tracker")
-
-    st.write("Columns in the CSV file:", df_10m.columns)
     sender_email = st.text_input("Sender email:")
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
@@ -273,9 +271,8 @@ def main():
 
             data_scaled = scaler.transform(data_processed)
             df_10m = pd.read_csv('top10milliondomains.csv')
-            # if domain_n in df_10m['Domain']:
-            #     outcome_message = "The URL is predicted to be safe."
-            #     st.write(outcome_message)
+            st.write("Columns in the CSV file:", df_10m.columns)
+
             if domain_n in df_10m['Domain'].values:
                 outcome_message = "The URL is predicted to be safe."
                 st.write(outcome_message)
