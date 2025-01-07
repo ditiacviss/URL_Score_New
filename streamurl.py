@@ -46,6 +46,9 @@ def main():
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
 
+    import os
+    st.write("Files in directory:", os.listdir())
+
     user_input = st.text_area("Enter the URL:")
     if st.button("Enter") and user_input:
         try:
