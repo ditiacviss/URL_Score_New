@@ -45,16 +45,15 @@ def getDomain_n(url):
     return domain
 
 
-def load_aws_credentials(file_path):
+def load_aws_credentials(file_content):
     try:
-        with open(file_path, 'r') as file:
-            credentials = yaml.safe_load(file)
-            return credentials['aws']['access_key'], credentials['aws']['secret_key']
+        credentials = yaml.safe_load(file_content)
+        return credentials['aws']['access_key'], credentials['aws']['secret_key']
     except yaml.YAMLError as e:
-        print(f"Error loading YAML file: {e}")
+        print(f"Error loading YAML content: {e}")
         raise
     except KeyError as e:
-        print(f"Missing key in the YAML file: {e}")
+        print(f"Missing key in the YAML content: {e}")
         raise
 
 def main():
