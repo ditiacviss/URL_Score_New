@@ -63,6 +63,7 @@ def main():
     sender_email = st.text_input("Sender email:")
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
+    keys_file=st.file_uploader("Upload Keys.yaml")
     # df_10m = st.file_uploader('Upload 10m Dataset')
 
     user_input = st.text_area("Enter the URL:")
@@ -325,7 +326,7 @@ def main():
 
             bucket_name = 'marketplace-scanner'
             file_key = 'top10milliondomains.csv'
-            aws_access_key, aws_secret_key = load_aws_credentials('keys.yaml')
+            aws_access_key, aws_secret_key = load_aws_credentials(keys_file)
 
             # Load the CSV file into a pandas DataFrame
             s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
