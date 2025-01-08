@@ -1,7 +1,7 @@
-import pandas as pd
-from Features.Features import get_fullDomain,check_favicon, havingIP,haveAtSign, check_robots_txt,redirection,tinyURL, prefixSuffix,domainAge
-from Features.Features import forwarding,get_security_headers,check_honeypot, check_cookies, check_entropy_domain
-from Features.Features import evaluate_url_safety,check_for_ads, is_free_certificate, check_caching_and_compression
+from Features.Features import get_fullDomain, check_favicon, havingIP, haveAtSign, check_robots_txt, redirection, \
+    tinyURL, prefixSuffix, domainAge
+from Features.Features import forwarding, get_security_headers, check_honeypot, check_cookies, check_entropy_domain
+from Features.Features import evaluate_url_safety, check_for_ads, is_free_certificate, check_caching_and_compression
 from sklearn.preprocessing import LabelEncoder
 from logger.logs import logger_info
 from bs4 import BeautifulSoup
@@ -21,8 +21,8 @@ from email_sender import sendmail
 model = load('rf_model.pkl')
 scaler = load('scaler_rf.pkl')
 
-def preprocess_data(df):
 
+def preprocess_data(df):
     df.replace((True, 'TRUE', 'True'), 0, inplace=True)
     df.replace((False, 'FALSE', 'False'), 1, inplace=True)
     df.fillna(-1, inplace=True)
@@ -57,13 +57,14 @@ def load_aws_credentials(file_path):
         print(f"Missing key in the YAML file: {e}")
         raise
 
+
 def main():
     st.title("URL Legitimacy Tracker")
 
     sender_email = st.text_input("Sender email:")
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
-    keys_file=st.file_uploader("Upload Keys.yaml")
+    keys_file = st.file_uploader("Upload Keys.yaml")
     # df_10m = st.file_uploader('Upload 10m Dataset')
 
     user_input = st.text_area("Enter the URL:")
@@ -245,7 +246,6 @@ def main():
             prefix_Suffix.append(prefixSuffix(url))
             domain_entropy.append(check_entropy_domain(url))
 
-
             # Construct the DataFrame with values for preprocessing
             data = pd.DataFrame({
                 "url": url_list,
@@ -289,40 +289,40 @@ def main():
 
             data_scaled = scaler.transform(data_processed)
 
-        #     df_10m = pd.read_csv('top10milliondomains.csv')
-        #     if domain_n in df_10m['Domain'].values:
-        #         outcome_message = "The URL is predicted to be safe."
-        #         st.write(outcome_message)
-        #     else:
-        #         probabilities = model.predict_proba(data_scaled)
-        #         for i, prob in enumerate(probabilities):
-        #             predicted_class = np.argmax(prob)
-        #             confidence = np.max(prob)
-        #             # st.write(f"Predicted Class = {predicted_class}, Confidence = {confidence:.2f}")
-        #             if predicted_class == 0:
-        #                 if confidence > 0.80:
-        #                     outcome_message = "The URL is predicted to be safe."
-        #                     st.write(outcome_message)
-        #                 else:
-        #                     outcome_message = ("The URL is predicted to be suspicious.")
-        #                     st.write(outcome_message)
-        #             else:
-        #                 if predicted_class == 1:
-        #                     if confidence >= 0.90:
-        #                         outcome_message = ("The URL is predicted to be suspicious.")
-        #                         st.write(outcome_message)
-        #                     else:
-        #                         outcome_message = "The URL is predicted to be safe."
-        #                         st.write(outcome_message)
-        #
-        #     logger_info(f"Outcome for URL {url} is {outcome_message}")
-        #     sendmail(sender_email, receiver_emails, f'Outcome for {url}',
-        #              f'Outcome for {url} is ---> {outcome_message}', password)
-        #
-        # except Exception as e:
-        #     st.write(f"Error processing the URL: {e}")
+            #     df_10m = pd.read_csv('top10milliondomains.csv')
+            #     if domain_n in df_10m['Domain'].values:
+            #         outcome_message = "The URL is predicted to be safe."
+            #         st.write(outcome_message)
+            #     else:
+            #         probabilities = model.predict_proba(data_scaled)
+            #         for i, prob in enumerate(probabilities):
+            #             predicted_class = np.argmax(prob)
+            #             confidence = np.max(prob)
+            #             # st.write(f"Predicted Class = {predicted_class}, Confidence = {confidence:.2f}")
+            #             if predicted_class == 0:
+            #                 if confidence > 0.80:
+            #                     outcome_message = "The URL is predicted to be safe."
+            #                     st.write(outcome_message)
+            #                 else:
+            #                     outcome_message = ("The URL is predicted to be suspicious.")
+            #                     st.write(outcome_message)
+            #             else:
+            #                 if predicted_class == 1:
+            #                     if confidence >= 0.90:
+            #                         outcome_message = ("The URL is predicted to be suspicious.")
+            #                         st.write(outcome_message)
+            #                     else:
+            #                         outcome_message = "The URL is predicted to be safe."
+            #                         st.write(outcome_message)
+            #
+            #     logger_info(f"Outcome for URL {url} is {outcome_message}")
+            #     sendmail(sender_email, receiver_emails, f'Outcome for {url}',
+            #              f'Outcome for {url} is ---> {outcome_message}', password)
+            #
+            # except Exception as e:
+            #     st.write(f"Error processing the URL: {e}")
 
-        # Function to load AWS credentials
+            # Function to load AWS credentials
 
             bucket_name = 'marketplace-scanner'
             file_key = 'top10milliondomains.csv'
@@ -330,13 +330,13 @@ def main():
             if keys_file is not None:
                 file_content = keys_file.read()  # Read the content of the uploaded file
                 aws_access_key, aws_secret_key = load_aws_credentials(file_content)
-            
+
                 s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
                 response = s3.get_object(Bucket=bucket_name, Key=file_key)
+                csv_content = response['Body'].read().decode('utf-8')
 
-                # Read the CSV content into a pandas DataFrame
                 df_10m = pd.read_csv(StringIO(csv_content))
-    
+
                 # Perform a quick search for the domain
                 if domain_n in df_10m['Domain'].values:
                     outcome_message = "The URL is predicted to be safe."
@@ -358,9 +358,10 @@ def main():
                                 outcome_message = "The URL is predicted to be safe."
                         st.write(outcome_message)
 
-            logger_info(f"Outcome for URL {url} is {outcome_message}")
-            sendmail(sender_email, receiver_emails, f'Outcome for {url}', f'Outcome for {url} is ---> {outcome_message}',
-                     password)
+                logger_info(f"Outcome for URL {url} is {outcome_message}")
+                sendmail(sender_email, receiver_emails, f'Outcome for {url}',
+                         f'Outcome for {url} is ---> {outcome_message}',
+                         password)
 
         except Exception as e:
             st.write(f"Error processing the URL: {e}")
