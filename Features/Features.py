@@ -15,7 +15,6 @@ import urllib.request
 import requests
 import whois
 from datetime import datetime
-import tldextract
 
 # 1.
 def check_favicon(url):

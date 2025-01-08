@@ -43,7 +43,6 @@ def getDomain_n(url):
     domain = f"{extracted.domain}.{extracted.suffix}"
     return domain
 
-
 def load_aws_credentials(file_content):
     try:
         credentials = yaml.safe_load(file_content)

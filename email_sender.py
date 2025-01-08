@@ -7,7 +7,6 @@ smtp_server = "smtp.gmail.com"
 port = 587
 context = ssl.create_default_context()
 
-
 def sendmail(sender_email, receivers, subject, message, password):
     if isinstance(receivers, str):
         receivers = [email.strip() for email in receivers.split(",")]
