@@ -1,5 +1,3 @@
-
-import pandas as pd
 from Features.Features import get_fullDomain,check_favicon, havingIP,haveAtSign, check_robots_txt,redirection,tinyURL, prefixSuffix,domainAge
 from Features.Features import forwarding,get_security_headers,check_honeypot, check_cookies, check_entropy_domain
 from Features.Features import evaluate_url_safety,check_for_ads, is_free_certificate, check_caching_and_compression
