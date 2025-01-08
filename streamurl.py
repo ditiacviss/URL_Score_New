@@ -1,11 +1,16 @@
 import pandas as pd
-from Features.Features import get_fullDomain,check_favicon, havingIP,haveAtSign, check_robots_txt,redirection,tinyURL, prefixSuffix,domainAge
-from Features.Features import forwarding,get_security_headers,check_honeypot, check_cookies, check_entropy_domain
-from Features.Features import evaluate_url_safety,check_for_ads, is_free_certificate, check_caching_and_compression
+from features.Features import get_fullDomain,check_favicon, havingIP,haveAtSign, check_robots_txt,redirection,tinyURL, prefixSuffix,domainAge
+from features.Features import forwarding,get_security_headers,check_honeypot, check_cookies, check_entropy_domain
+from features.Features import evaluate_url_safety,check_for_ads, is_free_certificate, check_caching_and_compression
 from sklearn.preprocessing import LabelEncoder
 from logger.logs import logger_info
 from bs4 import BeautifulSoup
 import numpy as np
+import pandas as pd
+import yaml
+import boto3
+import re
+from io import StringIO
 import requests
 import tldextract
 import streamlit as st
@@ -39,14 +44,26 @@ def getDomain_n(url):
     domain = f"{extracted.domain}.{extracted.suffix}"
     return domain
 
+
+def load_aws_credentials(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            credentials = yaml.safe_load(file)
+            return credentials['aws']['access_key'], credentials['aws']['secret_key']
+    except yaml.YAMLError as e:
+        print(f"Error loading YAML file: {e}")
+        raise
+    except KeyError as e:
+        print(f"Missing key in the YAML file: {e}")
+        raise
+
 def main():
     st.title("URL Legitimacy Tracker")
+
     sender_email = st.text_input("Sender email:")
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
-
-    # import os
-    # st.write("Files in directory:", os.listdir())
+    # df_10m = st.file_uploader('Upload 10m Dataset')
 
     user_input = st.text_area("Enter the URL:")
     if st.button("Enter") and user_input:
@@ -270,9 +287,55 @@ def main():
             data_processed = preprocess_data(data)
 
             data_scaled = scaler.transform(data_processed)
-            df_10m = pd.read_csv('top10milliondomains.csv')
-            st.write("Columns in the CSV file:", df_10m.columns)
 
+        #     df_10m = pd.read_csv('top10milliondomains.csv')
+        #     if domain_n in df_10m['Domain'].values:
+        #         outcome_message = "The URL is predicted to be safe."
+        #         st.write(outcome_message)
+        #     else:
+        #         probabilities = model.predict_proba(data_scaled)
+        #         for i, prob in enumerate(probabilities):
+        #             predicted_class = np.argmax(prob)
+        #             confidence = np.max(prob)
+        #             # st.write(f"Predicted Class = {predicted_class}, Confidence = {confidence:.2f}")
+        #             if predicted_class == 0:
+        #                 if confidence > 0.80:
+        #                     outcome_message = "The URL is predicted to be safe."
+        #                     st.write(outcome_message)
+        #                 else:
+        #                     outcome_message = ("The URL is predicted to be suspicious.")
+        #                     st.write(outcome_message)
+        #             else:
+        #                 if predicted_class == 1:
+        #                     if confidence >= 0.90:
+        #                         outcome_message = ("The URL is predicted to be suspicious.")
+        #                         st.write(outcome_message)
+        #                     else:
+        #                         outcome_message = "The URL is predicted to be safe."
+        #                         st.write(outcome_message)
+        #
+        #     logger_info(f"Outcome for URL {url} is {outcome_message}")
+        #     sendmail(sender_email, receiver_emails, f'Outcome for {url}',
+        #              f'Outcome for {url} is ---> {outcome_message}', password)
+        #
+        # except Exception as e:
+        #     st.write(f"Error processing the URL: {e}")
+
+        # Function to load AWS credentials
+
+            bucket_name = 'marketplace-scanner'
+            file_key = 'top10milliondomains.csv'
+            aws_access_key, aws_secret_key = load_aws_credentials('keys.yaml')
+
+            # Load the CSV file into a pandas DataFrame
+            s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+            response = s3.get_object(Bucket=bucket_name, Key=file_key)
+            csv_content = response['Body'].read().decode('utf-8')
+
+            # Read the CSV content into a pandas DataFrame
+            df_10m = pd.read_csv(StringIO(csv_content))
+
+            # Perform a quick search for the domain
             if domain_n in df_10m['Domain'].values:
                 outcome_message = "The URL is predicted to be safe."
                 st.write(outcome_message)
@@ -281,29 +344,25 @@ def main():
                 for i, prob in enumerate(probabilities):
                     predicted_class = np.argmax(prob)
                     confidence = np.max(prob)
-                    # st.write(f"Predicted Class = {predicted_class}, Confidence = {confidence:.2f}")
                     if predicted_class == 0:
                         if confidence > 0.80:
                             outcome_message = "The URL is predicted to be safe."
-                            st.write(outcome_message)
                         else:
-                            outcome_message = ("The URL is predicted to be suspicious.")
-                            st.write(outcome_message)
+                            outcome_message = "The URL is predicted to be suspicious."
                     else:
-                        if predicted_class == 1:
-                            if confidence >= 0.90:
-                                outcome_message = ("The URL is predicted to be suspicious.")
-                                st.write(outcome_message)
-                            else:
-                                outcome_message = "The URL is predicted to be safe."
-                                st.write(outcome_message)
+                        if predicted_class == 1 and confidence >= 0.90:
+                            outcome_message = "The URL is predicted to be suspicious."
+                        else:
+                            outcome_message = "The URL is predicted to be safe."
+                    st.write(outcome_message)
 
             logger_info(f"Outcome for URL {url} is {outcome_message}")
-            sendmail(sender_email, receiver_emails, f'Outcome for {url}',
-                     f'Outcome for {url} is ---> {outcome_message}', password)
+            sendmail(sender_email, receiver_emails, f'Outcome for {url}', f'Outcome for {url} is ---> {outcome_message}',
+                     password)
 
         except Exception as e:
             st.write(f"Error processing the URL: {e}")
+
 
 if __name__ == "__main__":
     main()
