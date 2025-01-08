@@ -59,7 +59,6 @@ def main():
     password = st.text_input('Email password:', type="password")
     receiver_emails = st.text_area("Receiver email(s), separated by commas:")
     keys_file=st.file_uploader('Upload your Keys.yaml')
-    # df_10m = st.file_uploader('Upload 10m Dataset')
 
     user_input = st.text_area("Enter the URL:")
     if st.button("Enter") and user_input:
@@ -283,16 +282,33 @@ def main():
             data_processed = preprocess_data(data)
             data_scaled = scaler.transform(data_processed)
 
-            # Handle predictions
             if keys_file is not None:
                 file_content = keys_file.read()
                 aws_access_key, aws_secret_key = load_aws_credentials(file_content)
 
                 s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
-                response = s3.get_object(Bucket='marketplace-scanner', Key='top10milliondomains.csv')
-                csv_content = response['Body'].read().decode('utf-8')
-                df_10m = pd.read_csv(StringIO(csv_content))
 
+                # List of files to fetch
+                file_keys = [
+                    'chunked_file_part_1.csv', 'chunked_file_part_2.csv', 'chunked_file_part_3.csv',
+                    'chunked_file_part_4.csv', 'chunked_file_part_5.csv', 'chunked_file_part_6.csv',
+                    'chunked_file_part_7.csv', 'chunked_file_part_8.csv', 'chunked_file_part_9.csv',
+                    'chunked_file_part_10.csv'
+                ]
+
+                df_10m = pd.DataFrame()
+
+                for key in file_keys:
+                    try:
+                        response = s3.get_object(Bucket='marketplace-scanner', Key=key)
+                        csv_content = response['Body'].read().decode('utf-8')
+                        chunk_df = pd.read_csv(StringIO(csv_content))
+                        df_10m = pd.concat([df_10m, chunk_df], ignore_index=True)
+                    except Exception as e:
+                        st.error(f"Error fetching file {key}: {e}")
+                        continue
+
+                # Process the fetched data
                 if domain_n in df_10m['Domain'].values:
                     outcome_message = "The URL is predicted to be safe."
                 else:
@@ -308,6 +324,7 @@ def main():
                 logger_info(f"Outcome for URL {url} is {outcome_message}")
                 sendmail(sender_email, receiver_emails, f'Outcome for {url}',
                          f'Outcome for {url} is ---> {outcome_message}', password)
+
         except Exception as e:
             st.error(f"Error processing the URL: {e}")
 
