@@ -326,36 +326,37 @@ def main():
 
             bucket_name = 'marketplace-scanner'
             file_key = 'top10milliondomains.csv'
-            aws_access_key, aws_secret_key = load_aws_credentials(keys_file)
 
-            # Load the CSV file into a pandas DataFrame
-            s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
-            response = s3.get_object(Bucket=bucket_name, Key=file_key)
-            csv_content = response['Body'].read().decode('utf-8')
+            if keys_file is not None:
+                file_content = keys_file.read()  # Read the content of the uploaded file
+                aws_access_key, aws_secret_key = load_aws_credentials(file_content)
+            
+                s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+                response = s3.get_object(Bucket=bucket_name, Key=file_key)
 
-            # Read the CSV content into a pandas DataFrame
-            df_10m = pd.read_csv(StringIO(csv_content))
-
-            # Perform a quick search for the domain
-            if domain_n in df_10m['Domain'].values:
-                outcome_message = "The URL is predicted to be safe."
-                st.write(outcome_message)
-            else:
-                probabilities = model.predict_proba(data_scaled)
-                for i, prob in enumerate(probabilities):
-                    predicted_class = np.argmax(prob)
-                    confidence = np.max(prob)
-                    if predicted_class == 0:
-                        if confidence > 0.80:
-                            outcome_message = "The URL is predicted to be safe."
-                        else:
-                            outcome_message = "The URL is predicted to be suspicious."
-                    else:
-                        if predicted_class == 1 and confidence >= 0.90:
-                            outcome_message = "The URL is predicted to be suspicious."
-                        else:
-                            outcome_message = "The URL is predicted to be safe."
+                # Read the CSV content into a pandas DataFrame
+                df_10m = pd.read_csv(StringIO(csv_content))
+    
+                # Perform a quick search for the domain
+                if domain_n in df_10m['Domain'].values:
+                    outcome_message = "The URL is predicted to be safe."
                     st.write(outcome_message)
+                else:
+                    probabilities = model.predict_proba(data_scaled)
+                    for i, prob in enumerate(probabilities):
+                        predicted_class = np.argmax(prob)
+                        confidence = np.max(prob)
+                        if predicted_class == 0:
+                            if confidence > 0.80:
+                                outcome_message = "The URL is predicted to be safe."
+                            else:
+                                outcome_message = "The URL is predicted to be suspicious."
+                        else:
+                            if predicted_class == 1 and confidence >= 0.90:
+                                outcome_message = "The URL is predicted to be suspicious."
+                            else:
+                                outcome_message = "The URL is predicted to be safe."
+                        st.write(outcome_message)
 
             logger_info(f"Outcome for URL {url} is {outcome_message}")
             sendmail(sender_email, receiver_emails, f'Outcome for {url}', f'Outcome for {url} is ---> {outcome_message}',
