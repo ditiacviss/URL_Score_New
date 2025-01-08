@@ -26,11 +26,9 @@ def preprocess_data(df):
     df.replace((False, 'FALSE', 'False'), 1, inplace=True)
     df.fillna(-1, inplace=True)
     df.replace('Error', -1, inplace=True)
-
     df['security headers'] = df['security headers'].astype(str)
     label_encoder = LabelEncoder()
     df['security headers'] = label_encoder.fit_transform(df['security headers'])
-
     df = df.drop(['url', 'TLD', 'Url Safety', 'HasSocialNet', 'HasHiddenFields', 'HasPasswordField'], axis=1)
     print(df.head())
     return df

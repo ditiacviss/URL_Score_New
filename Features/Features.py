@@ -1,7 +1,6 @@
 from urllib.parse import urlparse, urlencode
 import ipaddress
 import re
-import requests
 from bs4 import BeautifulSoup
 import whois
 import math
