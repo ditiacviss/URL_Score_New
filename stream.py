@@ -3,6 +3,8 @@ from Features.Features import forwarding,get_security_headers,check_honeypot, ch
 from Features.Features import evaluate_url_safety,check_for_ads, is_free_certificate, check_caching_and_compression
 from sklearn.preprocessing import LabelEncoder
 from logger.logs import logger_info
+import io
+import datetime
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
@@ -14,7 +16,6 @@ import requests
 import tldextract
 import streamlit as st
 from joblib import load
-from email_sender import sendmail
 
 # Load model and scaler
 model = load('rf_model.pkl')
@@ -54,11 +55,7 @@ def load_aws_credentials(file_content):
 
 def main():
     st.title("URL Legitimacy Tracker")
-
-    sender_email = st.text_input("Sender email:")
-    password = st.text_input('Email password:', type="password")
-    receiver_emails = st.text_area("Receiver email(s), separated by commas:")
-    keys_file=st.file_uploader('Upload your Keys.yaml')
+    keys_file = st.file_uploader('Upload your Keys.yaml')
 
     user_input = st.text_area("Enter the URL:")
     if st.button("Enter") and user_input:
@@ -239,8 +236,6 @@ def main():
             prefix_Suffix.append(prefixSuffix(url))
             domain_entropy.append(check_entropy_domain(url))
 
-
-            # Construct the DataFrame with values for preprocessing
             data = pd.DataFrame({
                 "url": url_list,
                 'Is Free': Is_Free,
@@ -285,10 +280,8 @@ def main():
             if keys_file is not None:
                 file_content = keys_file.read()
                 aws_access_key, aws_secret_key = load_aws_credentials(file_content)
-
                 s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
 
-                # List of files to fetch
                 file_keys = [
                     'chunked_file_part_1.csv', 'chunked_file_part_2.csv', 'chunked_file_part_3.csv',
                     'chunked_file_part_4.csv', 'chunked_file_part_5.csv', 'chunked_file_part_6.csv',
@@ -308,26 +301,45 @@ def main():
                         st.error(f"Error fetching file {key}: {e}")
                         continue
 
-                # Process the fetched data
                 if domain_n in df_10m['Domain'].values:
                     outcome_message = "The URL is predicted to be safe."
                 else:
                     probabilities = model.predict_proba(data_scaled)
                     predicted_class = np.argmax(probabilities[0])
                     confidence = np.max(probabilities[0])
-                    if predicted_class == 0 and confidence > 0.80:
-                        outcome_message = "The URL is predicted to be safe."
+                    if predicted_class == 0:
+                        st.write(confidence)
+                        if confidence > 0.80:
+                            outcome_message = "The URL is predicted to be Safe."
+                        else:
+                            outcome_message = "The URL is predicted to be Suspicious."
                     else:
-                        outcome_message = "The URL is predicted to be suspicious."
-
+                        st.write(confidence)
+                        if predicted_class == 1:
+                            if confidence > 0.85:
+                                outcome_message = "The URL is predicted to be Suspicious."
+                            else:
+                                outcome_message = "The URL is predicted to be Safe."
                 st.write(outcome_message)
-                logger_info(f"Outcome for URL {url} is {outcome_message}")
-                sendmail(sender_email, receiver_emails, f'Outcome for {url}',
-                         f'Outcome for {url} is ---> {outcome_message}', password)
+
+                logger_msg = f"{datetime.datetime.now()}   Outcome for URL- {url} is {outcome_message}"
+                Bucket = 'marketplace-scanner'
+                file_name = 'logs.txt'
+
+                existing_file_buffer = io.BytesIO()
+                s3.download_fileobj(Bucket, file_name, existing_file_buffer)
+                existing_file_buffer.seek(0)
+                existing_content = existing_file_buffer.read().decode('utf-8')
+                updated_content = existing_content + '\n' + logger_msg
+
+                logger_buffer = io.BytesIO()
+                logger_buffer.write(updated_content.encode('utf-8'))
+                logger_buffer.seek(0)
+                s3.upload_fileobj(logger_buffer, Bucket, file_name)
 
         except Exception as e:
             st.error(f"Error processing the URL: {e}")
 
-
 if __name__ == "__main__":
     main()
+
