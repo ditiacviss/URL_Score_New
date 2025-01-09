@@ -274,7 +274,6 @@ def main():
                 'domain entropy': domain_entropy
             })
 
-
             data_processed = preprocess_data(data)
             data_scaled = scaler.transform(data_processed)
 
@@ -284,36 +283,32 @@ def main():
                 s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
 
                 ##Features.csv
-                # S3 bucket and file details
                 Bucket = 'marketplace-scanner'
-                csv_name = 'features.csv'
+                csv_name = 'Test_Diti/features.csv'
 
                 try:
-                    # Download the existing CSV file if it exists
+                    # Try downloading the existing `features.csv`
                     existing_csv_buffer = io.BytesIO()
                     s3.download_fileobj(Bucket, csv_name, existing_csv_buffer)
                     existing_csv_buffer.seek(0)
                     existing_csv_content = existing_csv_buffer.read().decode('utf-8')
-
-                    # Append new data without headers
                     updated_csv = pd.read_csv(io.StringIO(existing_csv_content))
                     updated_csv = pd.concat([updated_csv, data], ignore_index=True)
 
                 except s3.exceptions.NoSuchKey:
-                    # File doesn't exist, create a new one
                     updated_csv = data
+                    st.warning("`features.csv` not found on S3. Creating a new file.")
 
-                # Write the updated DataFrame back to S3
                 csv_buffer = io.StringIO()
                 updated_csv.to_csv(csv_buffer, index=False)
                 csv_buffer.seek(0)
                 s3.upload_fileobj(io.BytesIO(csv_buffer.getvalue().encode('utf-8')), Bucket, csv_name)
-
+                
                 file_keys = [
-                    'chunked_file_part_1.csv', 'chunked_file_part_2.csv', 'chunked_file_part_3.csv',
-                    'chunked_file_part_4.csv', 'chunked_file_part_5.csv', 'chunked_file_part_6.csv',
-                    'chunked_file_part_7.csv', 'chunked_file_part_8.csv', 'chunked_file_part_9.csv',
-                    'chunked_file_part_10.csv'
+                    'Test_Diti/chunked_file_part_1.csv', 'Test_Diti/chunked_file_part_2.csv', 'Test_Diti/chunked_file_part_3.csv',
+                    'Test_Diti/chunked_file_part_4.csv', 'Test_Diti/chunked_file_part_5.csv', 'Test_Diti/chunked_file_part_6.csv',
+                    'Test_Diti/chunked_file_part_7.csv', 'Test_Diti/chunked_file_part_8.csv', 'Test_Diti/chunked_file_part_9.csv',
+                    'Test_Diti/chunked_file_part_10.csv'
                 ]
 
                 df_10m = pd.DataFrame()
@@ -351,22 +346,29 @@ def main():
 
                 logger_msg = f"{datetime.datetime.now()}   Outcome for URL- {url} is {outcome_message}"
                 Bucket = 'marketplace-scanner'
-                file_name = 'logs.txt'
+                file_name = 'Test_Diti/logs.txt'
 
-                existing_file_buffer = io.BytesIO()
-                s3.download_fileobj(Bucket, file_name, existing_file_buffer)
-                existing_file_buffer.seek(0)
-                existing_content = existing_file_buffer.read().decode('utf-8')
-                updated_content = existing_content + '\n' + logger_msg
+                try:
+                    existing_log_buffer = io.BytesIO()
+                    s3.download_fileobj(Bucket, file_name, existing_log_buffer)
+                    existing_log_buffer.seek(0)
+                    existing_log_content = existing_log_buffer.read().decode('utf-8')
+                    timestamp = datetime.datetime.now()
+                    new_log_entry = f"{timestamp} - {logger_msg}\n"
+                    updated_log_content = existing_log_content + new_log_entry
 
-                logger_buffer = io.BytesIO()
-                logger_buffer.write(updated_content.encode('utf-8'))
-                logger_buffer.seek(0)
-                s3.upload_fileobj(logger_buffer, Bucket, file_name)
+                except s3.exceptions.NoSuchKey:
+                    timestamp = datetime.datetime.now()
+                    updated_log_content = f"{timestamp} - {logger_msg}\n"
+                    st.warning("`logs.txt` not found on S3. Creating a new log file.")
+
+                log_buffer = io.BytesIO(updated_log_content.encode('utf-8'))
+                s3.upload_fileobj(log_buffer, Bucket, file_name)
+                st.success("`features.csv` updated successfully.")
+                st.success("`logs.txt` updated successfully.")
 
         except Exception as e:
             st.error(f"Error processing the URL: {e}")
 
 if __name__ == "__main__":
     main()
-
