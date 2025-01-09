@@ -274,6 +274,7 @@ def main():
                 'domain entropy': domain_entropy
             })
 
+
             data_processed = preprocess_data(data)
             data_scaled = scaler.transform(data_processed)
 
@@ -281,6 +282,32 @@ def main():
                 file_content = keys_file.read()
                 aws_access_key, aws_secret_key = load_aws_credentials(file_content)
                 s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+
+                ##Features.csv
+                # S3 bucket and file details
+                Bucket = 'marketplace-scanner'
+                csv_name = 'features.csv'
+
+                try:
+                    # Download the existing CSV file if it exists
+                    existing_csv_buffer = io.BytesIO()
+                    s3.download_fileobj(Bucket, csv_name, existing_csv_buffer)
+                    existing_csv_buffer.seek(0)
+                    existing_csv_content = existing_csv_buffer.read().decode('utf-8')
+
+                    # Append new data without headers
+                    updated_csv = pd.read_csv(io.StringIO(existing_csv_content))
+                    updated_csv = pd.concat([updated_csv, data], ignore_index=True)
+
+                except s3.exceptions.NoSuchKey:
+                    # File doesn't exist, create a new one
+                    updated_csv = data
+
+                # Write the updated DataFrame back to S3
+                csv_buffer = io.StringIO()
+                updated_csv.to_csv(csv_buffer, index=False)
+                csv_buffer.seek(0)
+                s3.upload_fileobj(io.BytesIO(csv_buffer.getvalue().encode('utf-8')), Bucket, csv_name)
 
                 file_keys = [
                     'chunked_file_part_1.csv', 'chunked_file_part_2.csv', 'chunked_file_part_3.csv',
